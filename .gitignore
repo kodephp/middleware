@@ -1,0 +1,34 @@
+# 依赖
+/vendor/
+/composer.phar
+composer.lock
+
+# 测试与静态分析
+/phpunit.xml
+/.phpunit.cache/
+/.phpunit.result.cache
+/coverage/
+phpstan.neon
+/phpstan.neon.tmp
+
+# 开发规则与技能（仅本地使用，不随包分发）
+/.trae/
+/.cursor/
+/.workbuddy/
+/.claude/
+CLAUDE.md
+AGENTS.md
+
+# IDE
+/.idea/
+/.vscode/
+/.fleet/
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 日志与临时文件
+/logs/*.log
+*.tmp
+*.temp

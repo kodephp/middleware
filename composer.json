@@ -1,0 +1,80 @@
+{
+    "name": "kode/middleware",
+    "type": "library",
+    "description": "轻量、可重入、协程安全的 PSR-15 中间件管道，串联路由前后三段式生命周期，原生融合多进程 / 多线程 / Fiber 协程与分布式链路透传",
+    "keywords": [
+        "middleware",
+        "pipeline",
+        "psr-15",
+        "psr-7",
+        "router",
+        "fiber",
+        "coroutine",
+        "parallel",
+        "process",
+        "distributed",
+        "kodephp"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Kode Team",
+            "email": "382601296@qq.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "psr/container": "^1.1 || ^2.0",
+        "psr/http-message": "^1.1 || ^2.0",
+        "psr/http-server-handler": "^1.0",
+        "psr/http-server-middleware": "^1.0"
+    },
+    "suggest": {
+        "kode/context": "用于协程 / 线程 / 进程环境下的请求上下文隔离与分布式链路透传",
+        "kode/di": "用于中间件类名的容器解析与构造函数自动装配",
+        "kode/fibers": "用于 Fiber 协程运行器（FiberRunner）",
+        "kode/parallel": "用于多线程运行器（ThreadRunner），需要 ext-parallel",
+        "kode/process": "用于多进程运行器（ProcessRunner）",
+        "kode/http": "用于 PSR-7 消息实现与 HTTP 服务端集成"
+    },
+    "require-dev": {
+        "nyholm/psr7": "^1.8",
+        "phpstan/phpstan": "^1.10",
+        "phpunit/phpunit": "^10.0 || ^11.0 || ^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kode\\Middleware\\": "src/"
+        },
+        "files": [
+            "src/functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kode\\Middleware\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test-coverage": "phpunit --coverage-html coverage",
+        "check": "phpstan analyse src --level=max",
+        "fix": "php-cs-fixer fix src --rules=@PSR12"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.x-dev"
+        }
+    },
+    "support": {
+        "issues": "https://github.com/kodephp/middleware/issues",
+        "source": "https://github.com/kodephp/middleware",
+        "docs": "https://github.com/kodephp/middleware#readme"
+    },
+    "homepage": "https://github.com/kodephp/middleware",
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
