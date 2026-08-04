@@ -50,6 +50,13 @@ final class Router
     private array $routes = [];
 
     /**
+     * @var list<array{prefix: string, middleware: list<mixed>}> 嵌套分组上下文栈
+     *
+     * 调用 {@see group()} 时压入，闭包执行完弹出；`add()` 据此累积前缀与共享中间件。
+     */
+    private array $groupStack = [];
+
+    /**
      * 登记一条路由
      *
      * @param string $pattern 路径模式，例如 `/users/{id}` 或 `/files/{path:.+}`
@@ -66,6 +73,8 @@ final class Router
         ?string $name = null,
         array $methods = []
     ): self {
+        [$pattern, $middleware] = $this->applyGroups($pattern, $middleware);
+
         $this->routes[] = [
             'pattern' => $pattern,
             'regex' => $this->compile($pattern),
@@ -76,6 +85,62 @@ final class Router
         ];
 
         return $this;
+    }
+
+    /**
+     * 登记一组共享前缀与中间件的嵌套路由
+     *
+     * 闭包内调用 {@see add()} 登记的路由会自动带上**累积前缀**与**分组共享中间件**；
+     * 支持多层嵌套——外层前缀与中间件沿栈向内层传递，顺序为：外层 → 内层 → 路由自身。
+     * 闭包执行结束后分组上下文自动出栈（即使闭包内抛异常也出栈），不影响后续登记。
+     *
+     * @param string $prefix 路径前缀，例如 `/api`
+     * @param array<int, mixed> $middleware 该分组共享的中间件声明（可为实例 / 类名 / 别名 / 分组名）
+     * @param \Closure $configure 形如 fn(Router): void，在其中登记路由
+     * @return $this 支持链式调用
+     */
+    public function group(string $prefix, array $middleware, \Closure $configure): self
+    {
+        $this->groupStack[] = [
+            'prefix' => $prefix,
+            'middleware' => array_values($middleware),
+        ];
+
+        try {
+            $configure($this);
+        } finally {
+            array_pop($this->groupStack);
+        }
+
+        return $this;
+    }
+
+    /**
+     * 把当前分组栈累积成最终路径与中间件
+     *
+     * @param string $pattern 原始路径模式
+     * @param array<int, mixed> $middleware 路由级中间件
+     * @return array{0: string, 1: list<mixed>} [最终路径, 最终中间件列表]
+     */
+    private function applyGroups(string $pattern, array $middleware): array
+    {
+        if ($this->groupStack === []) {
+            return [$pattern, $middleware];
+        }
+
+        $prefix = '';
+        $shared = [];
+
+        foreach ($this->groupStack as $ctx) {
+            $prefix .= '/' . trim($ctx['prefix'], '/');
+            /** @var list<mixed> $shared */
+            $shared = array_merge($shared, $ctx['middleware']);
+        }
+
+        $prefix = rtrim($prefix, '/');
+        $pattern = $prefix . ($pattern === '/' ? '' : '/' . ltrim($pattern, '/'));
+
+        return [$pattern, array_merge($shared, $middleware)];
     }
 
     /**

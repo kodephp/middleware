@@ -12,6 +12,7 @@ use Kode\Middleware\Observability\ProfilerMiddleware;
 use Kode\Middleware\Routing\DispatchMiddleware;
 use Kode\Middleware\Routing\RouteMiddleware;
 use Kode\Middleware\Routing\RouteResult;
+use Kode\Middleware\Routing\Router;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -76,6 +77,12 @@ final class Pipe
 
     /** @var Pipeline|null 构建结果缓存 */
     private ?Pipeline $built = null;
+
+    /** @var Router|null 惰性创建的内部路由收集器（route()/group() 触发） */
+    private ?Router $lazyRouter = null;
+
+    /** @var list<array{prefix: string, middleware: list<mixed>}> 路由分组上下文栈 */
+    private array $routeGroupStack = [];
 
     /**
      * @param ContainerInterface|null $container PSR-11 容器
@@ -234,17 +241,116 @@ final class Pipe
     /**
      * 设置路由匹配器
      *
-     * @param \Closure|RouteMiddleware $matcher 匹配器闭包（返回 RouteResult）或现成的路由中间件
+     * 可接受三种形态，框架按需挑选最顺手的：
+     *
+     * - `\Closure`：形如 `fn(ServerRequestInterface): RouteResult` 的自定义匹配器；
+     * - `RouteMiddleware`：已构造好的路由中间件实例；
+     * - `Router`：本包提供的零依赖路由收集器，直接喂入即可。
+     *
+     * @param \Closure|RouteMiddleware|Router $matcher 路由匹配器
      * @return $this 支持链式调用
      */
-    public function router(\Closure|RouteMiddleware $matcher): self
+    public function router(\Closure|RouteMiddleware|Router $matcher): self
     {
+        if ($matcher instanceof Router) {
+            $matcher = $matcher->matcher();
+        }
+
         $this->router = $matcher instanceof RouteMiddleware
             ? $matcher
             : new RouteMiddleware($matcher);
         $this->invalidate();
 
         return $this;
+    }
+
+    /**
+     * 一站式登记路由（惰性创建内部 Router）
+     *
+     * 框架无需先 new Router() 再 bind，直接在此逐条登记即可；
+     * 内部自动惰性创建 {@see Router} 并持续绑定到路由槽位。
+     * 路由级中间件可为命名分组名（经解析器在运行期展开为嵌套子管道）。
+     *
+     * @param string $pattern 路径模式，例如 `/users/{id}`
+     * @param mixed $handler 路由处理器（控制器、闭包、类名等）
+     * @param array<int, mixed> $middleware 路由级中间件声明
+     * @param string|null $name 路由名称
+     * @param array<int, string> $methods 允许访问的 HTTP 方法，空数组表示不限制
+     * @return $this 支持链式调用
+     */
+    public function route(
+        string $pattern,
+        mixed $handler,
+        array $middleware = [],
+        ?string $name = null,
+        array $methods = []
+    ): self {
+        if ($this->lazyRouter === null) {
+            $this->lazyRouter = new Router();
+        }
+
+        [$pattern, $middleware] = $this->applyRouteGroups($pattern, $middleware);
+        $this->lazyRouter->add($pattern, $handler, $middleware, $name, $methods);
+        $this->router($this->lazyRouter);
+
+        return $this;
+    }
+
+    /**
+     * 一站式登记路由分组（惰性创建内部 Router）
+     *
+     * 闭包内调用 {@see route()} 登记的路由会自动带上累积前缀与分组共享中间件；
+     * 支持多层嵌套，闭包收到的是当前 Pipe 自身，书写与扁平登记完全一致。
+     *
+     * 注意与 {@see group()}（注册命名中间件分组）区分：本方法用于"路由前缀分组"。
+     *
+     * @param string $prefix 路径前缀，例如 `/api`
+     * @param array<int, mixed> $middleware 该分组共享的中间件声明
+     * @param \Closure $configure 形如 fn(Pipe): void，在其中调用 route()
+     * @return $this 支持链式调用
+     */
+    public function routeGroup(string $prefix, array $middleware, \Closure $configure): self
+    {
+        $this->routeGroupStack[] = [
+            'prefix' => $prefix,
+            'middleware' => array_values($middleware),
+        ];
+
+        try {
+            $configure($this);
+        } finally {
+            array_pop($this->routeGroupStack);
+        }
+
+        return $this;
+    }
+
+    /**
+     * 把当前路由分组栈累积成最终路径与中间件
+     *
+     * @param string $pattern 原始路径模式
+     * @param array<int, mixed> $middleware 路由级中间件
+     * @return array{0: string, 1: list<mixed>} [最终路径, 最终中间件列表]
+     */
+    private function applyRouteGroups(string $pattern, array $middleware): array
+    {
+        if ($this->routeGroupStack === []) {
+            return [$pattern, $middleware];
+        }
+
+        $prefix = '';
+        $shared = [];
+
+        foreach ($this->routeGroupStack as $ctx) {
+            $prefix .= '/' . trim($ctx['prefix'], '/');
+            /** @var list<mixed> $shared */
+            $shared = array_merge($shared, $ctx['middleware']);
+        }
+
+        $prefix = rtrim($prefix, '/');
+        $pattern = $prefix . ($pattern === '/' ? '' : '/' . ltrim($pattern, '/'));
+
+        return [$pattern, array_merge($shared, $middleware)];
     }
 
     /**

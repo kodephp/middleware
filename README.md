@@ -394,6 +394,83 @@ $pipe->handle($request);
 
 `Router` 支持 `{name}`（`[^/]+`）与 `{name:regex}` 占位符、方法约束（不满足方法返回 405）、未命中返回 404。分组 + 路由 + 嵌套在此自然咬合。
 
+### 4. 路由嵌套分组（`Router::group`）
+
+路由收集器原生支持带前缀与共享中间件的嵌套分组，闭包内登记的路由会自动带上**累积前缀**与**分组共享中间件**（外层 → 内层 → 路由自身）：
+
+```php
+$router = (new Router())
+    ->group('/api', ['cors'], function (Router $r): void {
+        $r->add('/users', UserController::class, ['auth']);
+        $r->group('/v1', ['v1'], function (Router $r): void {
+            $r->add('/ping', PingController::class);
+        });
+    });
+
+// /api/users    → 中间件 [cors, auth]
+// /api/v1/ping  → 中间件 [cors, v1]
+```
+
+`Pipe::router()` 直接接受 `Router` 实例，无需再包一层 `matcher()`：
+
+```php
+$pipe = Pipe::create()->router($router)->fallback(fn () => new Response(404));
+```
+
+### 5. 一站式路由（`Pipe::route` / `Pipe::routeGroup`）
+
+不想先 `new Router()` 再绑定的话，直接用 `Pipe` 逐条登记即可——内部惰性创建 `Router` 并自动绑定路由槽位：
+
+```php
+$pipe = Pipe::create()
+    ->group('auth', [AuthMiddleware::class])        // 命名中间件分组
+    ->route('/', fn () => new Response(200, [], 'home'))
+    ->route('/users/{id}', UserController::class . '@show', ['auth'], 'user.show', ['GET'])
+    ->routeGroup('/api', ['cors'], function (Pipe $p): void {
+        $p->route('/ping', fn () => new Response(200, [], 'pong'));
+        $p->route('/secure', fn () => new Response(200, [], 's'), ['auth']);
+    })
+    ->fallback(fn () => new Response(404));
+
+// /api/ping    → 命中 cors 分组链路
+// /api/secure  → 同时命中 cors（路由分组）+ auth（路由级命名分组）
+```
+
+> `Pipe::group(name, array)` 注册的是**命名中间件分组**（可被路由引用），`Pipe::routeGroup(prefix, mw, fn)` 做的是**路由前缀分组**，二者职责不同，请勿混淆。
+
+---
+
+## 框架集成桥（Integration\FrameworkBridge）
+
+给 kode 框架一行式接入中间件能力，屏蔽样板代码。框架只需描述业务路由，再把生命周期钩子以关联数组一次性传入，即可拿到可直接 `run()` 的 {@see Kernel}：
+
+```php
+use function Kode\Middleware\bridge;
+
+$kernel = bridge(
+    pipe: Pipe::create($container)
+        ->route('/', fn () => new Response(200, [], 'home'))
+        ->route('/users/{id}', UserController::class . '@show', ['auth'])
+        ->fallback(fn () => new Response(404)),
+    hooks: [
+        'boot'       => fn (Kernel $k) => RouteCache::warm(),
+        'onResponse' => fn (ResponseInterface $r, $q) => $r->withHeader('X-Powered-By', 'kode'),
+        'rescue'     => fn (\Throwable $e, $q) => new Response(500, [], 'err'),
+    ],
+    renderer: fn (\Throwable $e, $q) => new Response(500, [], $e->getMessage()), // 异常边界渲染器（必填）
+);
+
+$kernel->boot();                 // 常驻内存：启动期一次
+$response = $kernel->handle($request); // 每请求，协程安全
+```
+
+桥默认开启两项便利：
+
+- `stack`（默认 `true`）：挂上内置中间件栈 `Trace(1000) → Scope(900) → Timeout(850) → Concurrent(800)`，按优先级自动排序。它们对未安装的兄弟扩展软降级，挂上即生效。
+- `observe`（默认 `true`）：挂上**异常边界 + 分层剖析**（`Server-Timing`），二者声明高优先级恒落洋葱最外层。开启时**必须**提供 `$renderer` 异常渲染器（库不绑定具体 PSR-7 实现，由框架提供）。
+
+`FrameworkBridge::kernel()` 与 `bridge()` 函数完全等价，后者只是命名空间级快捷入口。
+
 ---
 
 ## 代码生成（Codegen）
@@ -615,15 +692,7 @@ composer check
 composer fix
 ```
 
-当前测试覆盖（86 tests / 155 assertions）：管道不可变 / 可重入 / 协程交错不串号 / 可重试、`Resolver` 惰性 / 别名 / 分组 / 带参工厂 / 容器 / 条件 / 错误码、路由三段式顺序与兜底、**`Kernel` 启动幂等 · 钩子 · 兜底 · 收尾级联 · Fiber 可重入**、循环引用防护 / 惰性收尾级联 / 蓝图白名单等健壮性、**异常边界 · 分层剖析 · 完整框架洋葱链路**，以及**分组递归展开 / `Router` 路由收集器 / `Pipe` 嵌套组合 / 路由引用命名分组 / `Codegen` 代码生成**等新能力。
-
-## 版本历史
-
-> 变更记录以 Git Tag 为准（本仓库不随包分发独立 CHANGELOG）。
-
-- **v1.0.0** — 不可变 PSR-15 管道与框架集成洋葱模式（Kernel / 异常边界 / 分层剖析）。
-- **v1.0.1** — 精简仓库（移除 CHANGELOG 与 .github 等非必需文件）。
-- **v1.1.0** — 增强组合能力：`Registry::expand()` 递归分组摊平、零依赖 `Routing\Router`、 `Pipe::nest()` / `useGroup()` 嵌套组合、路由级中间件引用命名分组、`Codegen` 代码生成器。
+当前测试覆盖（95 tests / 187 assertions）：管道不可变 / 可重入 / 协程交错不串号 / 可重试、`Resolver` 惰性 / 别名 / 分组 / 带参工厂 / 容器 / 条件 / 错误码、路由三段式顺序与兜底、**`Kernel` 启动幂等 · 钩子 · 兜底 · 收尾级联 · Fiber 可重入**、循环引用防护 / 惰性收尾级联 / 蓝图白名单等健壮性、**异常边界 · 分层剖析 · 完整框架洋葱链路**，以及**分组递归展开 / `Router` 路由收集器 / `Pipe` 嵌套组合 / 路由引用命名分组 / `Codegen` 代码生成**等能力；本轮新增 **`Router` 嵌套分组前缀与中间件累积、 `Pipe::router(Router)` 直接接入、 `Pipe::route` / `routeGroup` 一站式登记、 `FrameworkBridge` 框架集成桥（stack / observe / 一行式内核）** 的集成测试。
 
 ## 许可证
 

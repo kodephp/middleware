@@ -236,3 +236,39 @@ if (!function_exists(__NAMESPACE__ . '\\generate_middleware')) {
             ->generate($className, $options);
     }
 }
+
+if (!function_exists(__NAMESPACE__ . '\\bridge')) {
+    /**
+     * 一行式构建 kode 框架内核
+     *
+     * 等价于 {@see \Kode\Middleware\Integration\FrameworkBridge::kernel()}。
+     *
+     * @param Pipe $pipe 已配置路由与业务中间件的构建器
+     * @param array<string, \Closure> $hooks 内核生命周期钩子（boot/onRequest/onResponse/onTerminate/rescue）
+     * @param bool $observe 是否挂载异常边界 + 分层剖析
+     * @param bool $stack 是否挂载内置中间件栈
+     * @param \Closure|null $renderer 异常渲染器（observe=true 时必填）
+     * @param \Closure|null $reporter 异常上报器
+     * @param \Closure|null $sink 剖析结果回调
+     * @return \Kode\Middleware\Kernel 可直接 run() 的内核
+     */
+    function bridge(
+        Pipe $pipe,
+        array $hooks = [],
+        bool $observe = true,
+        bool $stack = true,
+        ?\Closure $renderer = null,
+        ?\Closure $reporter = null,
+        ?\Closure $sink = null,
+    ): \Kode\Middleware\Kernel {
+        return \Kode\Middleware\Integration\FrameworkBridge::kernel(
+            $pipe,
+            $hooks,
+            $observe,
+            $stack,
+            $renderer,
+            $reporter,
+            $sink
+        );
+    }
+}
