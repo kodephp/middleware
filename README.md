@@ -326,6 +326,99 @@ $response = $kernel->run($request);
 
 ---
 
+## 分组 · 嵌套 · 路由集成（Group · Nest · Router）
+
+「可分组、结合 router、可嵌套」三者其实是同一件事的不同切面：本包用**一个机制**把它们统一起来——**分组名在运行期被解析器展开成一条嵌套子管道**。
+
+### 1. 命名分组（Registry）
+
+分组是一个"中间件别名列表"，可引用实例、类名、别名，甚至可以**递归引用其它分组**：
+
+```php
+use Kode\Middleware\Registry;
+
+$registry = (new Registry())
+    ->alias('auth', AuthMiddleware::class)
+    ->group('guard', ['session', 'csrf', 'auth'])      // 引用别名
+    ->group('api', ['cors', 'guard']);                // 递归引用分组
+```
+
+解析器遇到分组名时会就地展开为嵌套 `Pipeline`，因此分组内部仍是标准的洋葱嵌套关系。需要**构建期确定性摊平**（调试、序列化前校验）时，用 `Registry::expand()`——它带深度上限与环检测，且对合法的菱形依赖（A→B,C；B→D；C→D）**不会误报成环**：
+
+```php
+$registry->expand('api'); // ['cors', 'session', 'csrf', AuthMiddleware::class]
+```
+
+### 2. 嵌套组合（Pipe）
+
+`Pipeline` 自身实现了 `MiddlewareInterface`，因此天然可作为另一条管道里的一个洋葱层。`Pipe` 门面提供两种显式写法：
+
+```php
+use Kode\Middleware\Pipe;
+
+$pipe = Pipe::create()
+    // 内联一条嵌套子管道，作为当前位置的一层洋葱（共享容器与注册表）
+    ->nest(fn (Pipe $sub) => $sub
+        ->beforeRoute(Factory::tagging('inner-a'))
+        ->afterRoute(Factory::tagging('inner-b')))
+    // 把已注册的命名分组作为一层嵌套洋葱插入
+    ->useGroup('guard')
+    ->beforeRoute(TraceMiddleware::class)
+    ->fallback(fn () => new Response(404));
+```
+
+嵌套层对外层完全透明：它有自己的优先级排序，内部请求自外向内、响应自内向外，最内层终点接到主管道的下游处理器。`terminate()` 收尾会沿嵌套层级自动级联。
+
+### 3. 路由集成（Router）
+
+`Routing\Router` 是零依赖的模式路由收集器，把"路径模式 → 处理器 + 路由级中间件"登记起来，并产出 `RouteResult` 接入 `Pipe::router()`。路由级中间件可以是**命名分组名**，经 `Pipe` 与 `DispatchMiddleware` 共享的 `Resolver` 在运行期展开：
+
+```php
+use Kode\Middleware\Pipe;
+use Kode\Middleware\Routing\Router;
+
+$router = (new Router())
+    ->add('/', fn ($req) => new Response(200, [], 'home'))
+    ->add('/users/{id}', UserController::class . '@show', ['api.guard'], 'user.show', ['GET'])
+    ->add('/admin/{path:.+}', AdminController::class, ['admin.guard']);
+
+$pipe = Pipe::create($container)
+    ->group('api.guard', ['cors', 'auth'])      // 分组定义
+    ->router($router->matcher())                // 接入路由收集器
+    ->fallback(fn () => new Response(404));
+
+$pipe->handle($request);
+// 命中 /users/42 时：auth/cors（api.guard 分组展开为嵌套层）→ 控制器
+// 路径参数 {id}=42 会被平铺到 $request->getAttribute('id')
+```
+
+`Router` 支持 `{name}`（`[^/]+`）与 `{name:regex}` 占位符、方法约束（不满足方法返回 405）、未命中返回 404。分组 + 路由 + 嵌套在此自然咬合。
+
+---
+
+## 代码生成（Codegen）
+
+`Codegen\MiddlewareGenerator` 把"类名 / 优先级 / 描述"确定性地渲染成符合本包约定的 PSR-15 中间件源码，不依赖任何模板引擎，可无缝接入脚手架与 `middleware-assistant` 技能：
+
+```php
+use Kode\Middleware\Codegen\MiddlewareGenerator;
+
+$code = (new MiddlewareGenerator('App\Middleware'))
+    ->generate('AuthMiddleware', ['priority' => 1000, 'description' => '鉴权']);
+
+file_put_contents(__DIR__ . '/AuthMiddleware.php', $code);
+
+// 命名空间函数版
+$code = \Kode\Middleware\generate_middleware('AuthMiddleware', [
+    'priority' => 1000,
+    'namespace' => 'App\Middleware',
+]);
+```
+
+生成的类满足：`declare(strict_types=1)`、实现 `Psr\Http\Server\MiddlewareInterface`、暴露 `public const PRIORITY`（供 `Pipeline` 自动取用优先级）、`process()` 内给出"调用下游之前 / 响应返回之前"两处织入点注释。类名非法（含路径穿越字符）会抛 `RuntimeException`。
+
+---
+
 ## 并发：多进程 / 多线程 / Fiber 协程
 
 ### 运行器自动降级
@@ -522,7 +615,15 @@ composer check
 composer fix
 ```
 
-当前测试覆盖（74 tests / 137 assertions）：管道不可变 / 可重入 / 协程交错不串号 / 可重试、`Resolver` 惰性 / 别名 / 分组 / 带参工厂 / 容器 / 条件 / 错误码、路由三段式顺序与兜底、**`Kernel` 启动幂等 · 钩子 · 兜底 · 收尾级联 · Fiber 可重入**、循环引用防护 / 惰性收尾级联 / 蓝图白名单等健壮性，**异常边界 · 分层剖析 · 完整框架洋葱链路**。
+当前测试覆盖（86 tests / 155 assertions）：管道不可变 / 可重入 / 协程交错不串号 / 可重试、`Resolver` 惰性 / 别名 / 分组 / 带参工厂 / 容器 / 条件 / 错误码、路由三段式顺序与兜底、**`Kernel` 启动幂等 · 钩子 · 兜底 · 收尾级联 · Fiber 可重入**、循环引用防护 / 惰性收尾级联 / 蓝图白名单等健壮性、**异常边界 · 分层剖析 · 完整框架洋葱链路**，以及**分组递归展开 / `Router` 路由收集器 / `Pipe` 嵌套组合 / 路由引用命名分组 / `Codegen` 代码生成**等新能力。
+
+## 版本历史
+
+> 变更记录以 Git Tag 为准（本仓库不随包分发独立 CHANGELOG）。
+
+- **v1.0.0** — 不可变 PSR-15 管道与框架集成洋葱模式（Kernel / 异常边界 / 分层剖析）。
+- **v1.0.1** — 精简仓库（移除 CHANGELOG 与 .github 等非必需文件）。
+- **v1.1.0** — 增强组合能力：`Registry::expand()` 递归分组摊平、零依赖 `Routing\Router`、 `Pipe::nest()` / `useGroup()` 嵌套组合、路由级中间件引用命名分组、`Codegen` 代码生成器。
 
 ## 许可证
 

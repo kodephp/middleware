@@ -35,6 +35,9 @@ use Kode\Middleware\Exception\MiddlewareException;
  */
 final class Registry
 {
+    /** @var int 分组递归展开的最大深度，超出即判定为配置失控 */
+    public const MAX_DEPTH = 32;
+
     /** @var array<string, mixed> 别名 => 中间件声明 */
     private array $aliases = [];
 
@@ -101,6 +104,73 @@ final class Registry
         $this->groups[$name] = array_values($middleware);
 
         return $this;
+    }
+
+    /**
+     * 把命名分组（可递归引用其它分组）摊平为声明列表
+     *
+     * 与运行期"解析器把分组名展开成嵌套子管道"互补：这里在构建期做一次
+     * **确定性、可检视**的摊平，便于调试、序列化前校验与单测断言。
+     * 分组成员里出现的分组 / 别名名会被就地展开；实例、类名、可调用对象
+     * 等叶子声明原样保留。
+     *
+     * 健壮性：
+     * - 环检测基于"当前展开路径（chain）"而非全局已访问集合，
+     *   因此合法的菱形依赖（A→B,C；B→D；C→D）不会误报成环；
+     * - 深度超过 MAX_DEPTH 视为配置失控，立即抛出。
+     *
+     * @param string $name 分组名或别名名
+     * @return list<mixed> 摊平后的声明列表
+     * @throws MiddlewareException 名称未注册、存在环或层级过深时抛出
+     */
+    public function expand(string $name): array
+    {
+        if (!$this->has($name)) {
+            throw MiddlewareException::aliasNotFound($name);
+        }
+
+        return $this->flatten($this->lookup($name), [], 0);
+    }
+
+    /**
+     * 递归摊平一个声明为列表（私有实现）
+     *
+     * @param mixed $definition 待摊平的声明
+     * @param list<string> $chain 当前展开路径（仅记录分组 / 别名名，用于环检测）
+     * @param int $depth 当前递归深度
+     * @return list<mixed> 摊平后的声明列表
+     * @throws MiddlewareException 发现环或层级超限时抛出
+     */
+    private function flatten(mixed $definition, array $chain, int $depth): array
+    {
+        if ($depth > self::MAX_DEPTH) {
+            throw MiddlewareException::aliasTooDeep($chain[0] ?? 'group', self::MAX_DEPTH);
+        }
+
+        // 数组：逐元素摊平后拼接（保持注册顺序）
+        if (is_array($definition)) {
+            $flat = [];
+
+            foreach ($definition as $item) {
+                $flat = [...$flat, ...$this->flatten($item, $chain, $depth + 1)];
+            }
+
+            return $flat;
+        }
+
+        // 字符串且是已注册名称：视为分组 / 别名，就地展开（不把叶子类名错误展开）
+        if (is_string($definition) && $this->has($definition)) {
+            $key = $this->split($definition)[0];
+
+            if (in_array($key, $chain, true)) {
+                throw MiddlewareException::circularAlias([...$chain, $key]);
+            }
+
+            return $this->flatten($this->lookup($definition), [...$chain, $key], $depth + 1);
+        }
+
+        // 叶子声明（实例、类名、可调用对象等）原样保留
+        return [$definition];
     }
 
     /**

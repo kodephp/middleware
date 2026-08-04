@@ -146,6 +146,53 @@ final class Pipe
     }
 
     /**
+     * 内联一条嵌套子管道（作为当前位置的一层洋葱）
+     *
+     * 闭包里拿到的是一个独立子构建器，其 before/after 会组成一条**嵌套 Pipeline**，
+     * 以单个中间件节点的身份插入主管道。子管道共享主构建器的容器与注册表，
+     * 因此其中也能引用别名 / 分组。这是"嵌套 + 分组"组合最直观的写法。
+     *
+     * 嵌套层对主洋葱而言是透明的：它拥有自己的优先级排序，内部请求自外向内、
+     * 响应自内向外，其最内层终点接到主管道的下游处理器。
+     *
+     * @param \Closure $configure 形如 fn(Pipe $sub): void
+     * @return $this 支持链式调用
+     */
+    public function nest(\Closure $configure): self
+    {
+        $sub = new self($this->container, $this->registry);
+        $configure($sub);
+
+        // 把编译后的子管道作为一个中间件节点插入；Pipeline 实现 MiddlewareInterface，解析器原样放行
+        $this->before[] = $sub->build();
+        $this->invalidate();
+
+        return $this;
+    }
+
+    /**
+     * 把已注册的命名分组作为一层嵌套洋葱插入
+     *
+     * 与直接在 beforeRoute() 里写分组名等效，但语义更明确：此处强调"这是一个
+     * 可复用、可嵌套的层"。分组名在运行期由解析器展开为嵌套子管道。
+     *
+     * @param string $name 已注册的分组名
+     * @return $this 支持链式调用
+     * @throws MiddlewareException 名称未注册为分组时抛出
+     */
+    public function useGroup(string $name): self
+    {
+        if ($this->registry->kind($name) !== 'group') {
+            throw MiddlewareException::aliasNotFound($name);
+        }
+
+        $this->before[] = $name;
+        $this->invalidate();
+
+        return $this;
+    }
+
+    /**
      * 追加路由前中间件（全局中间件）
      *
      * 此处的中间件对所有请求生效，包括 404 请求。

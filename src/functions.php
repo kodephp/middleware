@@ -218,3 +218,21 @@ if (!function_exists(__NAMESPACE__ . '\\capabilities')) {
         return RunnerFactory::capabilities();
     }
 }
+
+if (!function_exists(__NAMESPACE__ . '\\generate_middleware')) {
+    /**
+     * 生成一份 PSR-15 中间件源码（代码生成）
+     *
+     * @param string $className 类名（仅字母 / 数字 / 下划线，须以字母或下划线开头）
+     * @param array{priority?: int, description?: string, namespace?: string} $options 可选配置
+     * @return string 完整 PHP 源码
+     * @throws \RuntimeException 类名非法时抛出
+     */
+    function generate_middleware(string $className, array $options = []): string
+    {
+        $namespace = $options['namespace'] ?? 'App\\Middleware';
+
+        return (new \Kode\Middleware\Codegen\MiddlewareGenerator($namespace))
+            ->generate($className, $options);
+    }
+}
