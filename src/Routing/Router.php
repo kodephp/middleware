@@ -157,8 +157,10 @@ final class Router
      * 根据请求匹配路由
      *
      * 匹配优先级：按登记顺序返回第一个路径与（可选）方法都命中的路由。
-     * 路径命中但方法不符 → methodNotAllowed（携带 Allow 列表）；
-     * 全部未命中 → notFound。
+     * 路径命中但方法不符**不短路**——继续扫描后续登记（同一路径常有多条不同
+     * 方法约束的路由，短路会让后登记的合法路由永远匹配不到）；全部扫完后若
+     * 存在路径命中但方法不符者，返回 405（携带所有命中路由 Allow 的并集）；
+     * 否则返回 404。
      *
      * @param ServerRequestInterface $request 请求对象
      * @return RouteResult 匹配结果（命中 / 未找到 / 方法不允许）
@@ -168,9 +170,10 @@ final class Router
         $path = $request->getUri()->getPath() ?: '/';
         $method = strtoupper($request->getMethod());
 
+        /** @var list<string> $allowCollect 路径命中但方法不符的路由白名单并集 */
+        $allowCollect = [];
+
         foreach ($this->routes as $route) {
-            // 方法约束优先于路径匹配：即使路径能匹配，方法不在白名单也应视为
-            // "方法不允许"而非"未找到"，从而给出正确的 405 而非 404。
             $pathHit = preg_match($route['regex'], $path, $matches) === 1;
 
             if (!$pathHit) {
@@ -178,7 +181,9 @@ final class Router
             }
 
             if ($route['methods'] !== [] && !in_array($method, $route['methods'], true)) {
-                return RouteResult::methodNotAllowed($route['methods']);
+                $allowCollect = array_merge($allowCollect, $route['methods']);
+
+                continue;
             }
 
             $params = [];
@@ -191,6 +196,10 @@ final class Router
             }
 
             return RouteResult::matched($route['handler'], $params, $route['middleware'], $route['name']);
+        }
+
+        if ($allowCollect !== []) {
+            return RouteResult::methodNotAllowed(array_values(array_unique($allowCollect)));
         }
 
         return RouteResult::notFound();

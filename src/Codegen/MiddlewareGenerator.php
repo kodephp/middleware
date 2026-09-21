@@ -38,6 +38,10 @@ final class MiddlewareGenerator
      */
     public function __construct(private readonly string $namespace = 'App\\Middleware')
     {
+        // 命名空间会被原样插进生成的源码：不校验就等于把注入面留给配置/CLI 参数
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $namespace)) {
+            throw new RuntimeException("非法的命名空间「{$namespace}」；仅允许字母、数字、下划线与反斜杠分段");
+        }
     }
 
     /**
@@ -54,6 +58,8 @@ final class MiddlewareGenerator
 
         $priority = (int) ($options['priority'] ?? 0);
         $doc = trim((string) ($options['description'] ?? ''));
+        // 描述里的星斜杠序列会提前终结 docblock，把后续文本变成源码里的 PHP——必须中和
+        $doc = str_replace('*/', '* /', $doc);
         $docBlock = $doc === '' ? '' : "\n *\n * " . str_replace("\n", "\n * ", $doc);
 
         // 命名空间里的反斜杠在源码里是单个字面量，构造函数已存为 'App\\Middleware'

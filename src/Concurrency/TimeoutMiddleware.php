@@ -45,6 +45,14 @@ final class TimeoutMiddleware implements MiddlewareInterface, PrioritizedInterfa
     public const ON_TIMEOUT_HEADER = 'header';
 
     /**
+     * @var float 上游预算继承下限（秒）
+     *
+     * X-Request-Timeout 是客户端可控头：不设下限则一个 `X-Request-Timeout: 1`
+     * 就能把本机及全部下游的预算压到毫秒级，等于廉价超时 DoS。
+     */
+    public const MIN_INHERITED_BUDGET = 0.05;
+
+    /**
      * @param float $budget 时间预算（秒）
      * @param string $onTimeout 超时策略，取 ON_TIMEOUT_* 之一
      * @param bool $inheritUpstream 是否继承上游通过请求头传来的剩余预算
@@ -145,6 +153,10 @@ final class TimeoutMiddleware implements MiddlewareInterface, PrioritizedInterfa
 
         $upstream = ((float) $header) / 1000.0;
 
-        return $upstream > 0 ? min($this->budget, $upstream) : $this->budget;
+        if ($upstream <= 0) {
+            return $this->budget;
+        }
+
+        return min($this->budget, max($upstream, self::MIN_INHERITED_BUDGET));
     }
 }

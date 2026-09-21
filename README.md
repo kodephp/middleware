@@ -692,7 +692,17 @@ composer check
 composer fix
 ```
 
-当前测试覆盖（95 tests / 187 assertions）：管道不可变 / 可重入 / 协程交错不串号 / 可重试、`Resolver` 惰性 / 别名 / 分组 / 带参工厂 / 容器 / 条件 / 错误码、路由三段式顺序与兜底、**`Kernel` 启动幂等 · 钩子 · 兜底 · 收尾级联 · Fiber 可重入**、循环引用防护 / 惰性收尾级联 / 蓝图白名单等健壮性、**异常边界 · 分层剖析 · 完整框架洋葱链路**，以及**分组递归展开 / `Router` 路由收集器 / `Pipe` 嵌套组合 / 路由引用命名分组 / `Codegen` 代码生成**等能力；本轮新增 **`Router` 嵌套分组前缀与中间件累积、 `Pipe::router(Router)` 直接接入、 `Pipe::route` / `routeGroup` 一站式登记、 `FrameworkBridge` 框架集成桥（stack / observe / 一行式内核）** 的集成测试。
+当前测试覆盖（105 tests / 216 assertions）：管道不可变 / 可重入 / 协程交错不串号 / 可重试、`Resolver` 惰性 / 别名 / 分组 / 带参工厂 / 容器 / 条件 / 错误码、路由三段式顺序与兜底、**`Kernel` 启动幂等 · 钩子 · 兜底 · 收尾级联 · Fiber 可重入**、循环引用防护 / 惰性收尾级联 / 蓝图白名单等健壮性、**异常边界 · 分层剖析 · 完整框架洋葱链路**，以及**分组递归展开 / `Router` 路由收集器 / `Pipe` 嵌套组合 / 路由引用命名分组 / `Codegen` 代码生成**等能力；另有 **`Router` 嵌套分组前缀与中间件累积、 `Pipe::router(Router)` 直接接入、 `Pipe::route` / `routeGroup` 一站式登记、 `FrameworkBridge` 框架集成桥（stack / observe / 一行式内核）** 的集成测试，以及 v1.3.0 修复回归（`MiddlewareFixesTest`）。
+
+## 版本要点
+
+### v1.3.0
+- `Router::match()` 不再被首个「路径命中但方法不符」的登记短路成 405：同一路径多条方法受限路由（先 GET 后 POST）时，POST 请求现在能正确落到后登记的处理器；405 携带所有路径命中路由 Allow 的**并集**（去重）。
+- `Propagator::extract()` 对客户端可控的 `X-Request-Id` / `tracestate` 做控制字符剔除（CR/LF 等）与 200 字符截断：二者会被 `TraceMiddleware` 原样回写进响应头并经 `inject()` 转发下游，是响应拆分与日志放大通道（HTTP/2 头值可携带任意控制字节，PSR-7 层宽严不一，不能依赖其兜底）。
+- `MiddlewareGenerator`：描述文本中的 `*/` 序列被中和（`* /`），不再能从 docblock 里漏出可执行代码；构造时校验命名空间语法，非法串直接抛出。
+- `Blueprint` 信任回退前先校验类名语法，畸形串（含 `:参数` 后缀等）不再喂给 `class_exists` 触发自动加载器副作用。
+- `TimeoutMiddleware` 继承上游 `X-Request-Timeout` 增设下限 `MIN_INHERITED_BUDGET`（50ms）：客户端一个 `X-Request-Timeout: 1` 头压碎本机及下游预算的通道已关闭；放大仍被本地预算封顶。
+- `ProcessRunner`：子进程完成任务后不再 `exit(0)`——exit 会跑继承自父进程的析构与 shutdown 链，向共享连接池发退出包污染常驻 worker；现为冲刷后 SIGKILL 自尽。`collect()` 超时改为秒+微秒双精度（亚秒预算生效），且超时路径先杀子进程再短窗回收（原实现阻塞 `waitpid` 等到任务自然结束，「超时」名存实亡）。
 
 ## 许可证
 

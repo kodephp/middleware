@@ -301,6 +301,12 @@ final class Blueprint implements \JsonSerializable
             return true;
         }
 
+        // 回退「任意 PSR-15 类」判定前先验类名语法：非法串（含 `:参数` 后缀、
+        // 控制字符等）不该喂给 class_exists 触发自动加载器的副作用
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\\\\[A-Za-z_][A-Za-z0-9_]*)*$/', $name)) {
+            return false;
+        }
+
         return class_exists($name)
             && is_subclass_of($name, \Psr\Http\Server\MiddlewareInterface::class);
     }

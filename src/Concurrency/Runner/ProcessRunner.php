@@ -173,7 +173,11 @@ final class ProcessRunner implements RunnerInterface
             }
 
             fclose($child);
-            exit(0);
+
+            // 绝不能用 exit()：fork 出的子进程继承父进程全部常驻资源（连接池、
+            // shutdown 函数、信号处理器），exit 会跑析构向共享连接发退出/提交包，
+            // 污染父进程连接池。数据已交予内核 socket 缓冲，SIGKILL 自尽最安全。
+            posix_kill(posix_getpid(), \SIGKILL);
         }
 
         // 父进程：返回一个延迟读取管道的句柄
@@ -199,10 +203,29 @@ final class ProcessRunner implements RunnerInterface
      */
     private function collect(mixed $stream, int $pid, float $timeout): mixed
     {
-        stream_set_timeout($stream, (int) max(1, ceil($timeout)));
+        // 秒+微秒双参：只传 int 秒会把 0.5s 这类预算向上取整到 1s，亚秒超时失效
+        $secs = max(0, (int) floor($timeout));
+        stream_set_timeout($stream, $secs, (int) (($timeout - $secs) * 1000000));
 
         $raw = stream_get_contents($stream);
+        $meta = stream_get_meta_data($stream);
+        $timedOut = is_array($meta) && $meta['timed_out'];
         fclose($stream);
+
+        if ($timedOut) {
+            // 超时时子进程仍在跑：此处若再阻塞式 waitpid，「超时」就名存实亡
+            // （调用方仍被拖到任务自然结束）。先杀掉再短窗回收。
+            posix_kill($pid, \SIGKILL);
+
+            $deadline = microtime(true) + 2.0;
+
+            while (pcntl_waitpid($pid, $status, \WNOHANG) === 0 && microtime(true) < $deadline) {
+                usleep(20000);
+            }
+
+            throw MiddlewareException::taskTimeout($this->name(), $timeout);
+        }
+
         pcntl_waitpid($pid, $status);
 
         if (!is_string($raw) || $raw === '') {

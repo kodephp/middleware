@@ -54,7 +54,8 @@ final class Propagator
     {
         $parsed = self::parseTraceparent($request->getHeaderLine(self::HEADER_TRACEPARENT));
 
-        $requestId = $request->getHeaderLine(self::HEADER_REQUEST_ID);
+        $requestId = self::sanitizeHeaderValue($request->getHeaderLine(self::HEADER_REQUEST_ID));
+        $tracestate = self::sanitizeHeaderValue($request->getHeaderLine(self::HEADER_TRACESTATE));
 
         return [
             'traceId' => $parsed['traceId'] ?? self::randomHex(32),
@@ -62,8 +63,25 @@ final class Propagator
             'parentSpanId' => $parsed['spanId'] ?? null,
             'sampled' => $parsed['sampled'] ?? true,
             'requestId' => $requestId !== '' ? $requestId : self::randomHex(16),
-            'tracestate' => $request->getHeaderLine(self::HEADER_TRACESTATE),
+            'tracestate' => $tracestate,
         ];
+    }
+
+    /**
+     * 清洗用户可控的头值
+     *
+     * X-Request-Id / tracestate 由外部传入，会被原样回写进响应头并转发给下游：
+     * 不剔除控制字符（含 CR/LF）即成响应拆分/头注入通道，不限长则可放大日志与
+     * 头部。统一收敛为可打印 ASCII 并截断到合理长度。
+     *
+     * @param string $value 原始头值
+     * @return string 清洗后的头值
+     */
+    private static function sanitizeHeaderValue(string $value): string
+    {
+        $clean = trim(preg_replace('/[^\x20-\x7E]/', '', $value) ?? '');
+
+        return substr($clean, 0, 200);
     }
 
     /**
