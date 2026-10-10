@@ -1,6 +1,6 @@
 # Kode\Middleware
 
-![PHP Version](https://img.shields.io/badge/PHP-%5E8.3-8892BF)
+![PHP Version](https://img.shields.io/badge/PHP-%5E8.4-8892BF)
 
 ![PSR-15](https://img.shields.io/badge/PSR--15-Compatible-blue)
 
@@ -28,7 +28,7 @@
 
 | 环境                                | 版本要求             |
 | --------------------------------- | ---------------- |
-| PHP                               | `>= 8.3`         |
+| PHP                               | `>= 8.4`         |
 | PSR-7                             | `^1.1 \|\| ^2.0` |
 | PSR-15（Server Middleware/Handler） | `^1.0`           |
 | PSR-11（Container）                 | `^1.1 \|\| ^2.0` |
@@ -656,7 +656,7 @@ $pipeline = Blueprint::fromJson($json)->rebuild($container);
 
 | 维度     | 支持情况                                                        |
 | ------ | ----------------------------------------------------------- |
-| PHP    | `8.3+`（用到 `readonly`、枚举、`\Fiber`、稳定排序等特性）                   |
+| PHP    | `8.4+`（用到 `readonly`、枚举、`\Fiber`、稳定排序等特性）                   |
 | 运行模式   | FPM / CLI / Swoole / Workerman / RoadRunner 均可（管道本身与运行模式无关） |
 | 并发模型   | 同步、Fiber 协程、ext-parallel 多线程、kode/process 多进程               |
 | PSR 兼容 | PSR-7、PSR-11、PSR-15、PSR-17（消息实现由外部提供）                       |
