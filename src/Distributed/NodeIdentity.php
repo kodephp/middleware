@@ -55,7 +55,7 @@ final class NodeIdentity
      */
     public function pid(): int
     {
-        return function_exists('getmypid') ? (int) getmypid() : 0;
+        return (int) getmypid();
     }
 
     /**
