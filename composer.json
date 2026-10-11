@@ -1,6 +1,6 @@
 {
     "name": "kode/middleware",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "type": "library",
     "description": "轻量、可重入、协程安全的 PSR-15 中间件管道，串联路由前后三段式生命周期，原生融合多进程 / 多线程 / Fiber 协程与分布式链路透传",
     "keywords": [
@@ -31,6 +31,8 @@
         "psr/http-server-middleware": "^1.0"
     },
     "suggest": {
+        "ext-pcntl": "PCNTL 扩展 - 用于进程信号优雅退出/并发",
+        "ext-posix": "POSIX 扩展 - 用于 IOuring 探测等信号支持",
         "kode/context": "用于协程 / 线程 / 进程环境下的请求上下文隔离与分布式链路透传",
         "kode/di": "用于中间件类名的容器解析与构造函数自动装配",
         "kode/fibers": "用于 Fiber 协程运行器（FiberRunner）",
