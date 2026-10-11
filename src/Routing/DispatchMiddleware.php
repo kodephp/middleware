@@ -62,6 +62,7 @@ final class DispatchMiddleware implements MiddlewareInterface, PrioritizedInterf
      * @return ResponseInterface 响应对象
      * @throws MiddlewareException 路由处理器无法被调用时抛出
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $route = RouteResult::from($request);
@@ -89,6 +90,7 @@ final class DispatchMiddleware implements MiddlewareInterface, PrioritizedInterf
      *
      * @return int 优先级数值，默认最低以保证位于最内层
      */
+    #[\Override]
     public function priority(): int
     {
         return $this->priority;

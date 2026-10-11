@@ -48,6 +48,7 @@ final class FiberRunner implements RunnerInterface
      *
      * @return string 固定返回 fiber
      */
+    #[\Override]
     public function name(): string
     {
         return 'fiber';
@@ -58,6 +59,7 @@ final class FiberRunner implements RunnerInterface
      *
      * @return bool PHP 具备 Fiber 类即返回 true
      */
+    #[\Override]
     public function supported(): bool
     {
         return class_exists(\Fiber::class);
@@ -70,6 +72,7 @@ final class FiberRunner implements RunnerInterface
      * @param array<int, mixed> $args 任务参数
      * @return TaskHandleInterface 任务句柄
      */
+    #[\Override]
     public function submit(\Closure $task, array $args = []): TaskHandleInterface
     {
         if (!$this->supported()) {
@@ -100,6 +103,7 @@ final class FiberRunner implements RunnerInterface
      * @return array<array-key, mixed> 结果集合，键与入参一致
      * @throws MiddlewareException 任务失败或超时时抛出
      */
+    #[\Override]
     public function all(array $tasks, ?float $timeout = null): array
     {
         if ($tasks === [] || !$this->supported()) {
@@ -149,6 +153,7 @@ final class FiberRunner implements RunnerInterface
      *
      * @return void
      */
+    #[\Override]
     public function close(): void
     {
         // 协程随请求结束自然回收，无需显式释放

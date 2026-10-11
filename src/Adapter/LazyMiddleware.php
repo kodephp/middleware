@@ -54,6 +54,7 @@ final class LazyMiddleware implements MiddlewareInterface, TerminableInterface
      * @return ResponseInterface 响应对象
      * @throws MiddlewareException 工厂未返回合法 PSR-15 中间件时抛出
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         return $this->instance()->process($request, $handler);
@@ -97,6 +98,7 @@ final class LazyMiddleware implements MiddlewareInterface, TerminableInterface
      * @param ResponseInterface $response 已发送的响应
      * @return void
      */
+    #[\Override]
     public function terminate(ServerRequestInterface $request, ResponseInterface $response): void
     {
         if ($this->resolved instanceof TerminableInterface) {

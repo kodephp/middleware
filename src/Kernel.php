@@ -247,6 +247,7 @@ final class Kernel implements RequestHandlerInterface, TerminableInterface
      * @return ResponseInterface 响应对象
      * @throws \Throwable 未配置兜底处理器时，原样抛出洋葱内的异常
      */
+    #[\Override]
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $this->boot();
@@ -291,6 +292,7 @@ final class Kernel implements RequestHandlerInterface, TerminableInterface
      * @param ResponseInterface $response 已发送的响应
      * @return void
      */
+    #[\Override]
     public function terminate(ServerRequestInterface $request, ResponseInterface $response): void
     {
         if ($this->pipeline instanceof TerminableInterface) {

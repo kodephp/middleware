@@ -74,6 +74,7 @@ final class TimeoutMiddleware implements MiddlewareInterface, PrioritizedInterfa
      * @return ResponseInterface 响应对象
      * @throws MiddlewareException 策略为 throw 且超出预算时抛出
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $budget = $this->resolveBudget($request);
@@ -106,6 +107,7 @@ final class TimeoutMiddleware implements MiddlewareInterface, PrioritizedInterfa
      *
      * @return int 优先级数值
      */
+    #[\Override]
     public function priority(): int
     {
         return $this->priority;

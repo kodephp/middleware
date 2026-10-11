@@ -28,6 +28,7 @@ final class SyncRunner implements RunnerInterface
      *
      * @return string 固定返回 sync
      */
+    #[\Override]
     public function name(): string
     {
         return 'sync';
@@ -38,6 +39,7 @@ final class SyncRunner implements RunnerInterface
      *
      * @return bool 恒为 true，同步运行器无任何环境依赖
      */
+    #[\Override]
     public function supported(): bool
     {
         return true;
@@ -50,6 +52,7 @@ final class SyncRunner implements RunnerInterface
      * @param array<int, mixed> $args 任务参数
      * @return TaskHandleInterface 已完成或已失败的任务句柄
      */
+    #[\Override]
     public function submit(\Closure $task, array $args = []): TaskHandleInterface
     {
         try {
@@ -66,6 +69,7 @@ final class SyncRunner implements RunnerInterface
      * @param float|null $timeout 超时秒数（同步执行下不生效）
      * @return array<array-key, mixed> 结果集合，键与入参一致
      */
+    #[\Override]
     public function all(array $tasks, ?float $timeout = null): array
     {
         $results = [];
@@ -82,6 +86,7 @@ final class SyncRunner implements RunnerInterface
      *
      * @return void
      */
+    #[\Override]
     public function close(): void
     {
         // 无需释放

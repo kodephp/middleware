@@ -56,6 +56,7 @@ final class ScopeMiddleware implements MiddlewareInterface, PrioritizedInterface
      * @param RequestHandlerInterface $handler 下游处理器
      * @return ResponseInterface 响应对象
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         if (!self::available()) {
@@ -83,6 +84,7 @@ final class ScopeMiddleware implements MiddlewareInterface, PrioritizedInterface
      *
      * @return int 优先级数值
      */
+    #[\Override]
     public function priority(): int
     {
         return $this->priority;

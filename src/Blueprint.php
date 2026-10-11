@@ -348,6 +348,7 @@ final class Blueprint implements \JsonSerializable
      *
      * @return array<string, mixed> 蓝图数组
      */
+    #[\Override]
     public function jsonSerialize(): array
     {
         return $this->toArray();

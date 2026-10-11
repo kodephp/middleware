@@ -64,6 +64,7 @@ class Resolver implements ResolverInterface
      * @return MiddlewareInterface 中间件实例
      * @throws MiddlewareException 声明无法被解析时抛出
      */
+    #[\Override]
     public function resolve(mixed $declaration): MiddlewareInterface
     {
         // 1. 已经是中间件实例（管道自身也走这里，因为 Pipeline 实现了 MiddlewareInterface）
@@ -98,6 +99,7 @@ class Resolver implements ResolverInterface
      * @param mixed $declaration 中间件声明
      * @return bool 可解析返回 true
      */
+    #[\Override]
     public function accepts(mixed $declaration): bool
     {
         if ($declaration instanceof MiddlewareInterface) {

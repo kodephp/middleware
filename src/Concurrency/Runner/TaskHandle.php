@@ -82,6 +82,7 @@ final class TaskHandle implements TaskHandleInterface
      *
      * @return bool 已完成返回 true
      */
+    #[\Override]
     public function done(): bool
     {
         if ($this->settled) {
@@ -98,6 +99,7 @@ final class TaskHandle implements TaskHandleInterface
      * @return mixed 任务返回值
      * @throws MiddlewareException 任务执行失败或等待超时时抛出
      */
+    #[\Override]
     public function await(?float $timeout = null): mixed
     {
         if ($this->settled) {
@@ -134,6 +136,7 @@ final class TaskHandle implements TaskHandleInterface
      *
      * @return mixed 已完成时返回结果，未完成返回 null
      */
+    #[\Override]
     public function poll(): mixed
     {
         if (!$this->done()) {

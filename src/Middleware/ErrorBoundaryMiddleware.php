@@ -86,6 +86,7 @@ final class ErrorBoundaryMiddleware implements MiddlewareInterface, PrioritizedI
      * @return ResponseInterface 响应对象
      * @throws \Throwable 命中放行名单，或渲染器自身失败时抛出
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         try {
@@ -106,6 +107,7 @@ final class ErrorBoundaryMiddleware implements MiddlewareInterface, PrioritizedI
      *
      * @return int 优先级数值
      */
+    #[\Override]
     public function priority(): int
     {
         return $this->priority;

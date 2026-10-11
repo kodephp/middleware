@@ -41,6 +41,7 @@ final class ProcessRunner implements RunnerInterface
      *
      * @return string 固定返回 process
      */
+    #[\Override]
     public function name(): string
     {
         return 'process';
@@ -51,6 +52,7 @@ final class ProcessRunner implements RunnerInterface
      *
      * @return bool 具备 pcntl 与 socket 能力时返回 true
      */
+    #[\Override]
     public function supported(): bool
     {
         return \PHP_OS_FAMILY !== 'Windows'
@@ -66,6 +68,7 @@ final class ProcessRunner implements RunnerInterface
      * @param array<int, mixed> $args 任务参数，必须可序列化
      * @return TaskHandleInterface 任务句柄
      */
+    #[\Override]
     public function submit(\Closure $task, array $args = []): TaskHandleInterface
     {
         if (!$this->supported()) {
@@ -89,6 +92,7 @@ final class ProcessRunner implements RunnerInterface
      * @return array<array-key, mixed> 结果集合，键与入参一致
      * @throws MiddlewareException 任务失败或超时时抛出
      */
+    #[\Override]
     public function all(array $tasks, ?float $timeout = null): array
     {
         if ($tasks === [] || !$this->supported()) {
@@ -116,6 +120,7 @@ final class ProcessRunner implements RunnerInterface
      *
      * @return void
      */
+    #[\Override]
     public function close(): void
     {
     }

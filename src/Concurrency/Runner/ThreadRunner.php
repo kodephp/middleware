@@ -54,6 +54,7 @@ final class ThreadRunner implements RunnerInterface
      *
      * @return string 固定返回 thread
      */
+    #[\Override]
     public function name(): string
     {
         return 'thread';
@@ -64,6 +65,7 @@ final class ThreadRunner implements RunnerInterface
      *
      * @return bool 已加载 ext-parallel 且存在 kode/parallel 时返回 true
      */
+    #[\Override]
     public function supported(): bool
     {
         return extension_loaded('parallel')
@@ -77,6 +79,7 @@ final class ThreadRunner implements RunnerInterface
      * @param array<int, mixed> $args 任务参数，必须可序列化
      * @return TaskHandleInterface 任务句柄
      */
+    #[\Override]
     public function submit(\Closure $task, array $args = []): TaskHandleInterface
     {
         if (!$this->supported()) {
@@ -110,6 +113,7 @@ final class ThreadRunner implements RunnerInterface
      * @return array<array-key, mixed> 结果集合，键与入参一致
      * @throws MiddlewareException 任务失败或超时时抛出
      */
+    #[\Override]
     public function all(array $tasks, ?float $timeout = null): array
     {
         if ($tasks === [] || !$this->supported()) {
@@ -134,6 +138,7 @@ final class ThreadRunner implements RunnerInterface
      *
      * @return void
      */
+    #[\Override]
     public function close(): void
     {
         if ($this->pool === null) {

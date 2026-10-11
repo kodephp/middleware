@@ -72,6 +72,7 @@ final class ConcurrentMiddleware implements MiddlewareInterface, PrioritizedInte
      * @param RequestHandlerInterface $handler 下游处理器
      * @return ResponseInterface 响应对象
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $runner = $this->runner ?? RunnerFactory::make($this->driver, $this->profile);
@@ -91,6 +92,7 @@ final class ConcurrentMiddleware implements MiddlewareInterface, PrioritizedInte
      *
      * @return int 优先级数值
      */
+    #[\Override]
     public function priority(): int
     {
         return $this->priority;

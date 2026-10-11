@@ -87,6 +87,7 @@ final class ProfilerMiddleware implements MiddlewareInterface, PrioritizedInterf
      * @param RequestHandlerInterface $handler 下游处理器
      * @return ResponseInterface 响应对象
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $profile = self::of($request);
@@ -131,6 +132,7 @@ final class ProfilerMiddleware implements MiddlewareInterface, PrioritizedInterf
      *
      * @return int 优先级数值
      */
+    #[\Override]
     public function priority(): int
     {
         return $this->priority;

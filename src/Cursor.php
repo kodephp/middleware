@@ -59,6 +59,7 @@ final class Cursor implements RequestHandlerInterface
      * @return ResponseInterface 响应对象
      * @throws MiddlewareException 中间件返回值非法，或管道无终点处理器
      */
+    #[\Override]
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         // 游标已越过最后一个中间件，交给终点处理器收尾

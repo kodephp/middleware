@@ -37,6 +37,7 @@ final class FixedResponseHandler implements RequestHandlerInterface
      * @param ServerRequestInterface $request 请求对象（未使用）
      * @return ResponseInterface 预置响应
      */
+    #[\Override]
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         return $this->response;

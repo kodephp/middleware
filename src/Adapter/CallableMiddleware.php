@@ -50,6 +50,7 @@ final class CallableMiddleware implements MiddlewareInterface
      * @return ResponseInterface 响应对象
      * @throws MiddlewareException 可调用对象返回值不是 ResponseInterface 时抛出
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $response = ($this->callable)($request, $handler);

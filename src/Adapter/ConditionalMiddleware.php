@@ -114,6 +114,7 @@ final class ConditionalMiddleware implements MiddlewareInterface
      * @param RequestHandlerInterface $handler 下游处理器
      * @return ResponseInterface 响应对象
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         if (($this->predicate)($request) === true) {

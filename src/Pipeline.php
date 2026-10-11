@@ -109,6 +109,7 @@ class Pipeline implements PipelineInterface, TerminableInterface, \Countable
      * @return static 携带新中间件的管道副本
      * @throws MiddlewareException 声明形式不被解析器接受时抛出
      */
+    #[\Override]
     public function add(mixed ...$middleware): static
     {
         $new = clone $this;
@@ -177,6 +178,7 @@ class Pipeline implements PipelineInterface, TerminableInterface, \Countable
      * @param RequestHandlerInterface $destination 终点处理器
      * @return static 管道副本
      */
+    #[\Override]
     public function withDestination(RequestHandlerInterface $destination): static
     {
         $new = clone $this;
@@ -234,6 +236,7 @@ class Pipeline implements PipelineInterface, TerminableInterface, \Countable
      * @return ResponseInterface 响应对象
      * @throws MiddlewareException 管道无终点处理器，或中间件返回值非法
      */
+    #[\Override]
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         return $this->cursor($this->destination)->handle($request);
@@ -250,6 +253,7 @@ class Pipeline implements PipelineInterface, TerminableInterface, \Countable
      * @return ResponseInterface 响应对象
      * @throws MiddlewareException 中间件返回值非法时抛出
      */
+    #[\Override]
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         return $this->cursor($this->destination ?? $handler)->handle($request);
@@ -282,6 +286,7 @@ class Pipeline implements PipelineInterface, TerminableInterface, \Countable
      * @param ResponseInterface $response 已发送的响应
      * @return void
      */
+    #[\Override]
     public function terminate(ServerRequestInterface $request, ResponseInterface $response): void
     {
         foreach ($this->compile() as $declaration) {
@@ -301,6 +306,7 @@ class Pipeline implements PipelineInterface, TerminableInterface, \Countable
      *
      * @return list<mixed> 已排序的声明列表
      */
+    #[\Override]
     public function stack(): array
     {
         return $this->compile();
@@ -331,6 +337,7 @@ class Pipeline implements PipelineInterface, TerminableInterface, \Countable
      *
      * @return int 中间件个数
      */
+    #[\Override]
     public function count(): int
     {
         return count($this->entries);
