@@ -121,13 +121,7 @@ final class ErrorBoundaryMiddleware implements MiddlewareInterface, PrioritizedI
      */
     private function shouldPassthrough(\Throwable $e): bool
     {
-        foreach ($this->passthrough as $type) {
-            if ($e instanceof $type) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->passthrough, fn($type) => $e instanceof $type);
     }
 
     /**

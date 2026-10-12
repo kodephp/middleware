@@ -96,13 +96,7 @@ final class RunnerFactory
             default => [new FiberRunner()],
         };
 
-        foreach ($candidates as $runner) {
-            if ($runner->supported()) {
-                return $runner;
-            }
-        }
-
-        return new SyncRunner();
+        return array_find($candidates, fn($runner) => $runner->supported()) ?? new SyncRunner();
     }
 
     /**

@@ -1,6 +1,6 @@
 {
     "name": "kode/middleware",
-    "version": "2.0.3",
+    "version": "2.0.4",
     "type": "library",
     "description": "轻量、可重入、协程安全的 PSR-15 中间件管道，串联路由前后三段式生命周期，原生融合多进程 / 多线程 / Fiber 协程与分布式链路透传",
     "keywords": [
