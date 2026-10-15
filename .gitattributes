@@ -7,3 +7,4 @@
 /phpunit.xml           export-ignore
 /.workbuddy/           export-ignore
 /phpunit.xml.dist      export-ignore
+/phpstan.neon           export-ignore

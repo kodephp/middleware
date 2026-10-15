@@ -79,7 +79,7 @@ final class Router
             'pattern' => $pattern,
             'regex' => $this->compile($pattern),
             'handler' => $handler,
-            'middleware' => array_values($middleware),
+            'middleware' => $middleware,
             'name' => $name,
             'methods' => array_values(array_map(strtoupper(...), $methods)),
         ];
@@ -103,7 +103,7 @@ final class Router
     {
         $this->groupStack[] = [
             'prefix' => $prefix,
-            'middleware' => array_values($middleware),
+            'middleware' => $middleware,
         ];
 
         try {

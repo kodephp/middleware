@@ -329,6 +329,6 @@ final class Registry
         [$key, $rest] = explode(':', $name, 2);
         $args = $rest === '' ? [] : array_map(trim(...), explode(',', $rest));
 
-        return [$key, array_values($args)];
+        return [$key, $args];
     }
 }
